@@ -1,3 +1,3 @@
 # WhiteEdelweiss
 
-This is the Repo about a really secret project
+This is a Repo about a really secret project
