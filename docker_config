@@ -1,0 +1,94 @@
+#!/bin/bash
+
+###### Configuration #########
+#Gateway IP
+_gwIP=127.0.0.1
+#Gateway name
+_gwName=my_gateway
+#Workstation name 
+_wsName=my_workstation
+#Internal network name
+_intNW=docker_internal
+#Persistence (true/false)
+persistence=true
+#VNC Target resolution
+vncres="1366x768"
+#Get the name of the default terminal emulator
+term=$(ps -o comm= -p "$(($(ps -o ppid= -p "$(($(ps -o sid= -p "$$")))")))")
+#####Output Colors#############
+white="\033[1;37m"
+red="\033[1;31m"
+green="\033[1;32m"
+yellow="\033[1;33m"
+blue="\033[1;34m"
+transparent="\e[0m"
+
+#########################################
+########## Functions ####################
+
+function startupChecks {
+	#Make sure we are root
+	if [ "$(whoami)" != "root" ]; then
+		printf "$red%s$transparent\n\n" "[This script needs to be run as root or with sudo.]"
+		exit 1
+	fi
+	
+	##	Is Docker Daemon running?
+	docker ps &> /dev/null
+	if [ $? -ne 0 ]; then
+		printf "$red%s$transparent\n\n" "[Docker daemon not running or permission denied...]"
+		exit 1
+	fi
+	#If we dont have an internet connection nothing makes sense at all...
+	_clearip=$(curl --silent https://canihazip.com/s)
+	## Check clear net IP ##
+	if [[ $_clearip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+			echo ""
+	else
+			printf "$red%s$transparent\n\n" "[Error. Do we have at least an internet connection?!]"
+			exit 1
+	fi
+	
+	#If there are any stopped containers, return 1 (true) or 0 (false)
+	if [ "$(docker ps -a | grep "$_gwName\|$_wsName")" != "" ]; then
+			
+			return 1
+	else 	return 0
+	fi
+	
+	rm log &> /dev/null
+
+	
+	return 0
+}
+
+function remove_container {
+		printf "\n$yellow%s$transparent\n" "[Deleting previously used containers..]"
+		docker stop $(docker ps -a | grep "$_gwName\|$_wsName" | awk '{ print$1 }') &> /dev/null
+		docker rm $(docker ps -a | grep "$_gwName\|$_wsName" | awk '{ print$1 }') &> /dev/null
+}
+
+function gw_start {
+	########## Start a Containainer from the Gateway Image ##########
+	printf "$white%s$transparent\n" "Starting a Gateway Container..."
+	_gwID=$(docker run -it --rm --privileged -d $_gwName) 
+
+	if [ "$_gwID" != "" ]; then
+		printf "%s\n" "Container started with ID: $_gwID"
+		printf "$green%s$transparent\n" "[Success!]"
+		
+	else
+		printf "\n$red%s$transparent\n" "[Error getting Container ID. See above errors!]"
+		return 1
+	fi
+
+	########### Connect Container to internal Network ################
+	printf "\n$white%s$transparent\n" "Connecting internal Network..."
+	docker network connect --ip $_gwIP $_intNW $_gwID
+	if [ $? -ne 0  ]; then
+		printf "\n$red%s$transparent\n" "[Error connecting to internal Docker Network.]"
+		return 2
+	fi
+	printf "$green%s$transparent\n" "[Success!]"
+	return 0
+}
