@@ -8,7 +8,7 @@ sudo apt update
 sudo apt install docker-ce docker-compose
 sudo systemctl enable docker
 sudo -H pip3 install awscli
-echo export AWS_SECRET_KEY = PFIAJEPKEE2Z35DTQPPA
-echo export AWS_SECRET_ACCESS_KEY = ZMHApGzGzKlFzPRmS/XVJhRWEPmfx4uYPgDnUWxn
+echo export AWS_SECRET_KEY = xxx
+echo export AWS_SECRET_ACCESS_KEY = xxx
 sudo apt autoremove
 sudo apt autoclean
